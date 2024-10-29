@@ -23,3 +23,8 @@ batch_size = 10
 for x, y in data_iter(batch_size, features, labels):#随机选取一个样本输出
     print(x, '\n', y)
     break;
+
+w = torch.normal(0, 0.01, (2, 1), requires_grad=True)
+b = torch.zeros(1, requires_grad=True)
+def linreg(x, w, b):
+    return torch.matmul(x, w) + b
