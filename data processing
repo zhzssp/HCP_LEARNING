@@ -52,7 +52,7 @@ tensor([[3., 1., 0.],
 x = torch.arange(4.0) #显式生成梯度图
 x.requires_grad_(True)
 y = 2*torch.dot(x,x)
-y.backward()
+y.backward()        #只能在y为标量的时候使用
 x.grad == 4*x
 
 tensor([True, True, True, True])
