@@ -1,0 +1,75 @@
+import os
+import pandas as pd
+
+os.makedirs(os.path.join('..','data'),exist_ok=True)
+data_file = os.path.join('..','data','house_tiny.csv')
+with open(data_file, 'w') as f:
+    f.write('NumRooms,Alley,Price\n')
+    f.write('NA,Pave,127500\n')
+    f.write('2,NA,423400\n')
+    f.write('4,NA,1414134\n')
+
+data = pd.read_csv(data_file)
+print(data)
+
+   NumRooms Alley    Price
+0       NaN  Pave   127500
+1       2.0   NaN   423400
+2       4.0   NaN  1414134
+
+inputs, outputs = data.iloc[:, 0:2], data.iloc[:, 2]
+inputs['NumRooms'] = inputs['NumRooms'].fillna(inputs['NumRooms'].mean())
+print(inputs)
+
+   NumRooms Alley
+0       3.0  Pave
+1       2.0   NaN
+2       4.0   NaN
+
+inputs = pd.get_dummies(inputs, dummy_na = True, dtype=int)
+print(inputs)
+
+   NumRooms  Alley_Pave  Alley_nan
+0       3.0        True      False
+1       2.0       False       True
+2       4.0       False       True
+
+inputs = pd.get_dummies(inputs, dummy_na = True).astype(int)
+print(inputs)
+
+   NumRooms  Alley_Pave  Alley_nan
+0         3           1          0
+1         2           0          1
+2         4           0          1
+
+x, y = torch.tensor(inputs.values, dtype=torch.float32), torch.tensor(outputs.values, dtype=torch.float32) #表格数据转换为tensor
+print(x, y)
+
+tensor([[3., 1., 0.],
+        [2., 0., 1.],
+        [4., 0., 1.]]) tensor([ 127500.,  423400., 1414134.])
+
+x = torch.arange(4.0) #显式生成梯度图
+x.requires_grad_(True)
+y = 2*torch.dot(x,x)
+y.backward()
+x.grad == 4*x
+
+tensor([True, True, True, True])
+
+def f(a):                  #隐式生成梯度图
+    b = a * 2
+    while b.norm() < 1000:
+        b = b * 2
+    if b.sum() > 0:
+        c = b
+    else:
+        c = 100 * b
+    return c
+
+a = torch.randn(size=(), requires_grad=True)
+d = f(a)
+d.backward()
+a.grad == d / a
+
+tensor(True)
