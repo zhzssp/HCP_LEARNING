@@ -11,7 +11,7 @@ true_w = torch.tensor([2, -3.4])
 true_b = 3.2
 features, labels = synthetic_data(true_w, true_b, 1000)
 
-def data_iter(batch_size, x, y):
+def data_iter(batch_size, features, labels):
     num = len(features)
     indices = list(range(num))
     random.shuffle(indices)
@@ -20,11 +20,12 @@ def data_iter(batch_size, x, y):
         yield features[batch_indices], labels[batch_indices]
 
 batch_size = 10
+
 for x, y in data_iter(batch_size, features, labels):#随机选取一个样本输出
     print(x, '\n', y)
     break;
 
-w = torch.normal(0, 0.01, (2, 1), requires_grad=True)    #定义初始参数w和b
+w = torch.normal(0, 0.01, size=(2, 1), requires_grad=True)    #定义初始参数w和b
 b = torch.zeros(1, requires_grad=True)
 
 def linreg(x, w, b):                #定义线性回归模型
@@ -35,9 +36,9 @@ def squared_loss(y_hat, y):    #以均方误差作为损失函数
 
 def gradient_descent(params, lr, batch_size):
     with torch.no_grad():
-        for pram in params:
-            para -= lr * param.grad / batch_size    #损失函数处没有求均值，因此在此处求均值
-            para.grad.zero_()    #手动调用函数使梯度清零
+        for param in params:
+            param -= lr * param.grad / batch_size    #损失函数处没有求均值，因此在此处求均值
+            param.grad.zero_()    #手动调用函数使梯度清零
 
 lr = 0.03
 epochs = 3
@@ -47,9 +48,9 @@ loss = squared_loss
 for epoch in range(epochs):            #训练
     for x, y in data_iter(batch_size, features, labels):
         l = loss(net(x, w, b), y)        #此时l为(batch_size, 1)而非标量，因此加和之后再求
-        l.sum.backward()
+        l.sum().backward()
         gradient_descent(w, lr, batch_size)
     with torch.no_grad():
-        train_loss = loss(net(x, features, b), labels))    #显示数据集整体的loss
+        train_loss = loss(net(features, w, b), labels))    #显示数据集整体的loss
         print(f'epoch {epoch + 1}, loss {float(train_loss.mean()):f}')
 
