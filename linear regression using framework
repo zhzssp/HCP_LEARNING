@@ -1,17 +1,17 @@
 import numpy as np
 import torch
 from torch.utils import data
-from d2l import torch as d2l 
+from d2l import torch as d2l
 
 true_w = torch.tensor([2, -3.4])
 true_b = 4.2
-features, labels = synthetic_data(true_w, true_b, 1000) #封装了之前的synthetic_data，此时的features和labels均为list
+features, labels = d2l.synthetic_data(true_w, true_b, 1000) #封装了之前的synthetic_data，此时的features和labels均为list
 
 def load_arrays(data_arrays, batch_size, is_train=True):
   dataset = data.TensorDataset(*data_arrays)
-  return data.DataLoader(dataset, batch__size, shuffle=is_train)
+  return data.DataLoader(dataset, batch_size, shuffle=is_train)
 
-bactch_size = 10
+batch_size = 10
 data_iter = load_arrays((features, labels), batch_size)    #将features和labels做成一个list传入
 
 next(iter(data_iter))
