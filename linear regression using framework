@@ -14,4 +14,25 @@ def load_arrays(data_arrays, batch_size, is_train=True):
 batch_size = 10
 data_iter = load_arrays((features, labels), batch_size)    #将features和labels做成一个list传入
 
-next(iter(data_iter))
+next(iter(data_iter))       #体现了DataLoader为可迭代的容器
+
+from torch import nn
+
+net = nn.Sequential(nn.Linear(2, 1))    #使用框架中预定义好的层
+net[0].weight.data.normal_(0, 0.01)                          #初始化模型参数
+net[0].bias.data.fill_(0)
+
+loss = nn.MSELoss()
+trainer = torch.optim.SGD(net.parameters(), lr=0.03)
+
+epochs = 9
+
+for epoch in range(epochs):
+    for x, y in data_iter:
+        l = loss(net(x), y)             #封装的损失函数自动将结果计算为标量
+        trainer.zero_grad()             #不做清零，计算图会累积，最终稿导致误差极大
+        l.backward()
+        trainer.step()                  #optimizer进行一次优化
+    with torch.no_grad():
+        train_loss = loss(net(features), labels)
+        print(f'epoch {epoch + 1}, train_loss {train_loss:f}')
