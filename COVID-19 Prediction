@@ -6,7 +6,7 @@ from torch.utils.data import TensorDataset, DataLoader
 import random
 
 my_batch_size = 18
-epochs = 10
+epochs = 15
 
 data= pd.read_csv("E:\\machine learning\\dataset\\COVID_dataset\\covid.train.csv")
 # data1 = data.iloc[:, 0:38]
@@ -19,19 +19,20 @@ def load_data(features, labels, size, is_train=True):
 
 dataloader = load_data(features, labels, my_batch_size)
 
-loss = nn.MSELoss()
+loss = nn.HuberLoss()
 net = nn.Sequential(
     nn.Linear(38, 1),
 )
 net[0].weight.data.normal_(0.5, 0.01)
 net[0].bias.data.fill_(0.001)
-optim = torch.optim.SGD(net.parameters(), lr=0.01)
+optim = torch.optim.SGD(net.parameters(), lr=0.006)
 
 for epoch in range(epochs):     #数据集中的大量0造成的nan和inf？
     for x, y in dataloader:
         l = loss(net(x), y)
         optim.zero_grad()
         l.backward()
+        torch.nn.utils.clip_grad_norm_(net.parameters(), max_norm=1.0)
         optim.step()
     with torch.no_grad():
         train_loss = loss(net(features), labels)
