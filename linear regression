@@ -1,7 +1,7 @@
 import random
 import torch
 
-def synthetic_data(w, b, num):        #获取features和labels
+def synthetic_data(w, b, num):        #构造数据集
     x = torch.normal(0, 1, (num, len(w)))
     y = torch.matmul(x, w) + b
     y += torch.normal(0, 0.01, y.shape)
@@ -15,7 +15,7 @@ def data_iter(batch_size, x, y):
     num = len(features)
     indices = list(range(num))
     random.shuffle(indices)
-    for i in range(0, num, batch_size):        #使用生成器返回batch_size的features和labels
+    for i in range(0, num, batch_size):        #使用生成器返回batch_size的小批量features和labels
         batch_indices = torch.tensor(indices[i:min(i+batch_size, num)])
         yield features[batch_indices], labels[batch_indices]
 
@@ -24,16 +24,32 @@ for x, y in data_iter(batch_size, features, labels):#随机选取一个样本输
     print(x, '\n', y)
     break;
 
-w = torch.normal(0, 0.01, (2, 1), requires_grad=True)    #定义初始w和b
+w = torch.normal(0, 0.01, (2, 1), requires_grad=True)    #定义初始参数w和b
 b = torch.zeros(1, requires_grad=True)
-def linreg(x, w, b):                #定义线性回归层
+
+def linreg(x, w, b):                #定义线性回归模型
     return torch.matmul(x, w) + b
 
 def squared_loss(y_hat, y):    #以均方误差作为损失函数
     return (y_hat - y.reshape(y_hat.shape))**2 / 2
 
-def optimizer(params, lr, batch_size):
+def gradient_descent(params, lr, batch_size):
     with torch.no_grad():
         for pram in params:
             para -= lr * param.grad / batch_size    #损失函数处没有求均值，因此在此处求均值
             para.grad.zero_()    #手动调用函数使梯度清零
+
+lr = 0.03
+epochs = 3
+net = linreg
+loss = squared_loss
+
+for epoch in range(epochs):            #训练
+    for x, y in data_iter(batch_size, features, labels):
+        l = loss(net(x, w, b), y)        #此时l为(batch_size, 1)而非标量，因此加和之后再求
+        l.sum.backward()
+        gradient_descent(w, lr, batch_size)
+    with torch.no_grad():
+        train_loss = loss(net(x, features, b), labels))    #显示数据集整体的loss
+        print(f'epoch {epoch + 1}, loss {float(train_loss.mean()):f}')
+
