@@ -73,3 +73,10 @@ d.backward()
 a.grad == d / a
 
 tensor(True)
+
+a=torch.tensor([1.1],requires_grad=True)        #计算图的梯度累积原理
+b=a*2
+c=a*3
+b.backward()
+c.backward()
+a.grad
