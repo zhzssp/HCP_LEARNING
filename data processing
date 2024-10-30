@@ -49,7 +49,7 @@ tensor([[3., 1., 0.],
         [2., 0., 1.],
         [4., 0., 1.]]) tensor([ 127500.,  423400., 1414134.])
 
-x = torch.arange(4.0) #显式生成梯度图
+x = torch.arange(4.0)      #显式生成计算图
 x.requires_grad_(True)
 y = 2*torch.dot(x,x)
 y.backward()        #只能在y为标量的时候使用
@@ -57,7 +57,7 @@ x.grad == 4*x
 
 tensor([True, True, True, True])
 
-def f(a):                  #隐式生成梯度图
+def f(a):                  #隐式生成计算图
     b = a * 2
     while b.norm() < 1000:
         b = b * 2
