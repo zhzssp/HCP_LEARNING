@@ -1,0 +1,181 @@
+from tqdm import tqdm
+import torch
+import os
+import pandas as pd
+import csv
+import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.tensorboard import SummaryWriter
+import numpy as np
+import random
+import math
+
+
+# 设定随机种子
+def same_seed(seed):
+    torch.backends.cudnn.deterministic = True  # 选择确定性的算法，保证结果的可复现性
+    torch.backends.cudnn.benchmark = False  # 默认值为True，搜索最合适的GPU加速算法，会使得运行结果产生变化
+    random.seed(seed)  # 为random库生成种子
+    np.random.seed(seed)  # 确保使用random生成随机数时，结果可重复
+    torch.manual_seed(seed)  # 为当前设备CPU/GPU设置种子
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)  # 为CPU和GPU都设置种子
+
+
+# 划分数据集
+def train_valid_split(dataset, valid_ratio, seed):  # 种子用于从训练集当中随机地划分出一组数据作为验证集
+    len_valid = int(len(dataset) * valid_ratio)
+    len_train = len(dataset) - len_valid
+    train_set, valid_set = random_split(dataset, [len_train, len_valid], generator=torch.Generator().manual_seed(seed))
+    # split返回list，generator生成器搭配种子来随机划分数据，学习其中的原理
+    return np.array(train_set), np.array(valid_set)
+
+
+# 筛选features
+def select_features(train_set, valid_set, test_set, select_all=True):  # select_all允许在进行模型优化的时候，删除掉相关性较低的features
+    labels_train = train_set[:, -1]  # 取最后一列作为labels
+    labels_valid = valid_set[:, -1]
+
+    raw_features_train, raw_features_valid = train_set[:, :-1], valid_set[:, :-1]  # random_spli切割出的最后一行默认为labels
+    raw_features_test = test_set                                                  #注意切片中的:，去掉id列即可得到更高准确率
+
+    if select_all:
+        features_idx = list(range(raw_features_train.shape[1]))  # 形状的第2维度为特征总数
+    else:
+        features_idx = [0, 1, 2, 3]         #根据需要自行选择特征
+
+    return (raw_features_train[:, features_idx], raw_features_valid[:, features_idx],
+            raw_features_test[:, features_idx], labels_train, labels_valid)
+
+
+# 制作数据集
+class COVID_Dataset(Dataset):
+    def __init__(self, features, targets=None):  # taget为None代表只做预测，可以理解为无labels输入
+        if targets is None:
+            self.targets = targets
+        else:
+            self.targets = torch.FloatTensor(targets)
+        self.features = torch.FloatTensor(features)
+
+    def __getitem__(self, item):
+        if self.targets is None:        #作为测试集的返回值，用于dataloader迭代
+            return self.features[item]
+        else:
+            return self.features[item], self.targets[item]      #作为训练集和验证集的返回值
+
+    def __len__(self):
+        return len(self.features)
+
+
+# 模型定义
+class model(nn.Module):
+    def __init__(self, input_dim):
+        super(model, self).__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(input_dim, 16),
+            nn.ReLU(),
+            nn.Linear(16, 8),
+            nn.ReLU(),
+            nn.Linear(8, 1)
+        )
+
+    def forward(self, x):
+        x = self.layers(x)
+        x = x.squeeze(1)  # 将可能产生的1的维度压缩掉
+        return x
+
+#配置超参数
+# device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = 'cpu'
+config = {
+    'seed': 1122408,
+    'select_all': True,
+    'valid_ratio': 0.2,
+    'epochs': 3000,
+    'batch_size': 256,
+    'lr': 1e-5,
+    'early_stop': 400,
+    'save_path': './models/COVID_models'
+}
+
+def trainer(train_dataloader, valid_dataloader, model, config, device):
+    criterion = nn.MSELoss(reduction='mean')        #指定使用loss的平均值，'sum'返回loss的和，'none'发怒会每个样本的loss
+    optimizer = torch.optim.SGD(model.parameters(), lr=config['lr'], momentum=0.9)      #控制收敛，避免陷入局部最小
+
+    writer = SummaryWriter()
+    if os.path.isdir('./models'):
+        os.mkdir('./models')
+
+    epochs = config['epochs']
+    best_loss = math.inf
+    step = 0
+    early_stop_count = 0        #用于帮助终止循环过程
+
+    for epoch in range(epochs):
+        model.train()
+        loss_record = []
+        show = tqdm(train_dataloader, position=0, leave=True)   #得到的本质上还是dataloader，避免出现多个进度条。并在迭代完成后保留进度条
+        # train loop
+        for x, y in train_dataloader:
+            x, y = x.to(device), y.to(device)
+            optimizer.zero_grad()
+            pred = model(x)
+            loss = criterion(pred, y)
+            loss.backward()
+            optimizer.step()
+            step += 1
+            loss_record.append(loss.detach().item())
+            show.set_description(f'epoch {epoch + 1}/{epochs}')
+            show.set_postfix({'loss': loss.detach().item()})
+
+        mean_train_loss = sum(loss_record) / len(loss_record)
+        writer.add_scalar('train_loss', mean_train_loss, step)
+
+        #valid loop
+        model.eval()
+        loss_record = []
+        for x, y in valid_dataloader:
+            x, y = x.to(device), y.to(device)
+            with torch.no_grad():
+                pred = model(x)
+                loss = criterion(pred, y)
+            loss_record.append(loss.item())     #detach的作用？
+
+        mean_valid_loss = sum('valid_loss') / len(loss_record)
+        print(f'epoch: {epoch + 1}/{epochs}, train_loss: {mean_train_loss:6f}, valid_loss: {mean_valid_loss:6f}')
+        writer.add_scalar('valid_loss', mean_valid_loss, step)
+
+        if mean_valid_loss < best_loss:
+            best_loss = mean_valid_loss
+            torch.save(model.state_dict(), config['save_path'])
+            print('update model')
+            early_stop_count = 0
+        else:
+            early_stop_count += 1
+
+        if early_stop_count >= config['early_stop']:
+            print('model updating finished')
+            return
+
+    print('model updating finished')
+
+#各函数定义完成，开始训练前准备
+same_seed(config['seed'])
+train_data = pd.read_csv("E:\\machine learning\\dataset\\COVID_dataset\\covid.train.csv").values    #np.array
+test_data = pd.read_csv("E:\\machine learning\\dataset\\COVID_dataset\\covid.test.csv").values
+train_data, valid_data = train_valid_split(train_data, config['valid_ratio'], config['seed'])
+print(f'train size {train_data.shape}, valid size {valid_data.shape}, test size {test_data.shape}')
+
+x_train, x_valid, x_test, y_train, y_valid = select_features(train_data, test_data, config['select_all'])
+print(f'the number of features is {x_train.shape[1]}')
+
+train_dataset = COVID_Dataset(x_train, y_train)
+valid_dataset = COVID_Dataset(x_valid, y_valid)
+test_dataset = COVID_Dataset(x_test)
+train_loader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffle=True, pin_memory=True)
+valid_loader = DataLoader(valid_dataset, batch_size=config['batch_size'], shuffle=True, pin_memory=True)
+test_loader = DataLoader(test_dataset, batch_size=config['batch_size'], shuffle=True, pin_memory=True)
+
+#训练
+my_model = model(input_dim=x_train.shape[1]).to(device)
+trainer(train_loader, valid_loader, my_model, config, device)
