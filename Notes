@@ -1,0 +1,11 @@
+linear regression
+1.计算图积累
+2.随机数种子
+
+softmax regression
+1.累加器Accumulator
+2.广播机制
+
+多层感知机
+1.收敛定理
+2.sigmoid和tanh等涉及到指数运算的激活函数，自动求导的代价较高
