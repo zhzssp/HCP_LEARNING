@@ -1,0 +1,37 @@
+def dropout_layer(x, dropout):
+    assert 0 <= dropout <= 1
+    if dropout == 1:
+        return torch.zeros_like(x)
+    if dropout == 0:
+        return x
+    mask = (torch.randn(x.shape) > dropout).float()
+    return mask * x / (1.0 - dropout)
+
+
+class MySequential(nn.Module):
+    def __init__(self, *args):
+        super().__init__()
+        for block in args:
+            self._modules[block] = block    #dictionary, special variable
+
+    def forward(self, x):
+        for block in self._modules.values():    #get the values of the dictionary
+            x = block(x)
+        return x
+
+def convolution_2d(x, kernel):
+    h, w = kernel.shape
+    y = torch.zeros((x.shape[0] - h + 1, x.shape[1] - w + 1))
+    for i in range(y.shape[0]):
+        for j in range(y.shape[1]):
+            y[i, j] = (x[i : i + h, j : j + w] * kernel).sum()
+    return y
+
+class Con2d(nn.Module):
+    def __init__(self, kernel_size):
+        super().__init__()
+        self.weight = nn.Parameter(torch.rand(kernel_size))
+        self.bias = nn.Parameter(torch.zeros(1))
+
+    def forward(self, x):
+        return convolution_2d(x, self.weight) + self.bias
