@@ -22,3 +22,6 @@ softmax regression
 
 CNN
 1.黑白通道为1，彩色通道为3
+2.输出尺寸：(input_size - kernel_size + 2 * padding) / stride + 1
+3.控制输出大小相等，2 * padding = kernel_size - 1（padding通常设成该大小）
+4.数学上的卷积：对y[n] = x[n] * h[n]，对称->遍历k求和
