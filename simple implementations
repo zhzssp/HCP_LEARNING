@@ -35,3 +35,20 @@ class Con2d(nn.Module):
 
     def forward(self, x):
         return convolution_2d(x, self.weight) + self.bias
+
+def batch_norm(x, gamma, beta, moving_mean, moving_var, eps, momentum):     #带moving的为由数据整体计算得到的量
+    if not torch.is_grad_enabled():
+        x_hat = (x - moving_mean) / torch.sqrt(moving_var + eps)       #推断模式
+    else:
+        assert len(x.shape) in (2, 4)    #判断是否是二维或者四维的tensor
+        if len(x.shape) == 2:
+            mean = x.mean(dim=0)    #按特征求平均数
+            var = ((x - mean)**2).mean(dim=0)
+        else:
+            mean = x.mean(dim=(0, 2, 3), keepdim=True)
+            var = ((x - mean)**2).mean(dim=(0, 2, 3), keepdim=True)
+        x_hat = (x - mean) / torch.sqrt(var + eps)
+        moving_mean = momentum * moving_mean + (1.0 - momentum) * mean
+        moving_var = momentum * moving_var + (1.0 - momentum) * var
+    y = gamma * x_hat + beta
+    return y, moving_mean, moving_var
