@@ -1,0 +1,110 @@
+import torch
+from torch import nn
+from d2l import torch as d2l
+from torch import nn
+from torch.nn import functional as F
+
+#预测每个锚框的类别
+def class_predictor(num_inputs, num_anchors, num_classes):  # 输入通道数，锚框数，类别数
+    return nn.Conv2d(num_inputs, num_anchors * (num_classes + 1), kernel_size=3, padding=1)  # 1代表背景类，
+    # num_anchors表示每个像素生成了多少个锚框，输出的通道表示每个像素生成的所有锚框的预测值
+    #卷积的高、宽、通道中包含的数据信息全部都是预测
+
+#预测锚框的offset（偏移量）
+def bounding_box_predictor(num_inputs, num_anchors):
+    return nn.Conv2d(num_inputs, num_anchors * 4, kernel_size=3, padding=1)     #乘4是因为需要预测bounding box的四个值
+
+#连接多尺度的预测
+def forward(x, block):
+    return block(x)
+
+y1 = forward(torch.zeros((2, 8, 20, 20)), class_predictor(8, 5, 10))
+y2 = forward(torch.zeros((2, 16, 10, 10)), class_predictor(16, 3, 10))
+print(y1.shape, y2.shape) #结果分别在一个像素上生成五个和三个锚框
+
+def flatten_prediction(prediction):
+    return torch.flatten(prediction.permute(0, 2, 3, 1), start_dim=1)       #pytorch和mxnet中通道数都是放在第一维，
+    # 而tensorflow则是放在最后一维，start_dim=1表示把第一维以及后面的维度flatten，可以使得对类别的预测连续放置
+
+def concat_predictions(predictions):
+    return torch.cat([flatten_prediction(prediction) for prediction in predictions], dim=1)
+#除了第一个维度一样，其他都不一样，可以将后面维度都拉成一个向量变成一个大的tensor进行处理
+
+print(concat_predictions([y1, y2]).shape)
+
+#backbone网络生成器，高宽减半块，在实际应用之中通常使用pre_trained的模型
+def down_sample_blk(in_channels, out_channels):
+    blk = []
+    for _ in range(2):
+        blk.append(nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1))
+        blk.append(nn.BatchNorm2d(out_channels))
+        blk.append(nn.ReLU())
+        in_channels = out_channels
+    blk.append(nn.MaxPool2d(out_channels))
+    return nn.Sequential(*blk)
+
+print(forward(torch.zeros((2, 3, 20, 20)), down_sample_blk(3, 10)).shape)
+
+#从原始图片抽取特征，一直到第一次从feature map做锚框，被称为base net
+def base_net():
+    blk = []
+    num_filters = [3, 16, 32, 64]   #通道数变化
+    for i in range(len(num_filters) - 1):
+        blk.append(down_sample_blk(num_filters[i], num_filters[i + 1]))
+    return nn.Sequential(*blk)
+
+print(forward(torch.zeros((2, 3, 256, 256)), base_net()).shape)
+
+#完整的SSD由五个模块组成，五个模块即从五个尺度去做目标检测
+def get_blk(i):
+    if i == 0:
+        blk = base_net()    #get feature map
+    elif i == 1:
+        blk = down_sample_blk((64, 128))
+    elif i == 4:
+        blk = nn.AdaptiveAvgPool2d((1, 1))      #global max pool
+    else:
+        blk = down_sample_blk(128, 128)
+    return blk
+
+def blk_forward(x, blk, size, ratio, cls_predictor, bbox_predictor):
+    y = blk(x)
+    anchors = d2l.multibox_prior(y, sizes=size, ratios=ratio)   #生成一些锚框，可以提前生成，因为只需要y的高和宽
+    cls_preds = class_predictor(y)  #不关心锚框长什么样，只关心y的形状，看到的是整个feature map，backward时候看锚框中的feature
+    bbox_preds = bbox_predictor(y)
+    return (y, anchors, cls_preds, bbox_preds)
+
+sizes = [[0.2, 0.272],   #size ratio, 等比均值
+        [0.37, 0.447],
+        [0,54, 0.619],
+        [0.71, 0.79],
+        [0.88, 0.961]]
+
+ratios = [[1, 2, 0.5]] * 5
+num_anchors = len[sizes[0]] + len[ratios[0]] - 1
+
+class TinySSD(nn.Module):
+    def __init__(self, num_classes, *kwargs):
+        super().__init__()
+        self.num_classes = num_classes
+        idx_to_in_channels = [64, 128, 128, 128, 128]
+        for i in range(5):
+            setattr(self, f'blk_{i}', get_blk(i))
+            setattr(self, f'cls_{i}', class_predictor(idx_to_in_channels[i], num_anchors, num_classes))
+            setattr(self, f'bbox_{i}', bounding_box_predictor(idx_to_in_channels[i], num_anchors))
+    def forward(self,x):
+        anchors, cls_preds, bbox_preds = [None] * 5, [None] * 5, [None] * 5
+        for i in range(5):
+            x, anchors[i], cls_preds[i], bbox_preds[i] = blk_forward(x, getattr(self, f'blk_{i}'), sizes[i], ratios[i], getattr(self, f'cls_{i}'), getattr(self, f'bbox_{i}'))
+        anchors = torch.cat(anchors, dim=1)
+        cls_preds = concat_predictions(cls_preds)
+        cls_preds = cls_preds.reshape(cls_preds.shape[0], -1, self.num_classes + 1)     #方便对最后一维的预测类别进行softmax
+        bbox_preds = concat_predictions(bbox_preds)
+        return anchors, cls_preds, bbox_preds
+
+net = TinySSD(num_classes=1)
+x = torch.zeros((32, 3, 256, 256))
+anchors, cls_pred, bbox_preds = net(x)
+print(f'output anchors: ', anchors.shape)
+print(f'output class predictions: ', cls_pred.shape)
+print(f'output bounding box predictions: ', bbox_preds.shape)
