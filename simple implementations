@@ -52,3 +52,11 @@ def batch_norm(x, gamma, beta, moving_mean, moving_var, eps, momentum):     #带
         moving_var = momentum * moving_var + (1.0 - momentum) * var
     y = gamma * x_hat + beta
     return y, moving_mean, moving_var
+
+def trans_conv(x, k):
+    h, w = k.shape
+    y = torch.zeros((x.shape[0] + h - 1, x.shape[1] + w - 1))
+    for i in range(y.shape[0]):
+        for i in range(y.shape[1]):
+            y[i : i + h, j : j + w] += x[i, j]
+    return y
