@@ -63,7 +63,7 @@ def gram(x):    #匹配二阶统计分布（分布相近即可认为风格一致
     return torch.matmul(x, x.T) / (num_channels * n)    #对协方差做归一化
 
 def style_loss(y_hat, gram_y):
-    return torch.square(gram(y_hat) - gram_y.detach()).mean()
+    return torch.square(gram(y_hat) - gram_y.detach()).mean()    #detach样式图片不要进行更新
 
 def tv_loss(y_hat):
     return 0.5 * (torch.abs(y_hat[:, :, 1:, :] - y_hat[:, :, :-1, :]).mean() +
