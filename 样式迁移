@@ -1,0 +1,97 @@
+import torch
+import torchvision
+from torch import nn
+from d2l import torch as d2l
+from torch import nn
+from torch.nn import functional as F
+
+d2l.set_figsize()
+content = d2l.Image.open("C:\\Users\\zhzss\\Pictures\\ltt & zh\\our1.jpg")
+d2l.plt.imshow(content)
+
+style = d2l.Image.open("C:\\Users\\zhzss\\Pictures\\ltt & zh\\cool.jpg")
+d2l.plt.imshow(style)
+
+rgb_mean = torch.tensor([0.433, 0.456, 0.478])
+rgb_std = torch.tensor([0.224, 0.236, 0.299])
+
+def preprocess(image, image_size):
+    transforms = torchvision.transforms.Compose([
+        torchvision.transforms.Resize(image_size),
+        torchvision.transforms.ToTensor(),
+        torchvision.transforms.Normalize(mean=rgb_mean, std=rgb_std)
+    ])
+    return transforms(image).unsqueeze(0)
+
+def postprocess(image):
+    image = image[0].to(rgb_std.device)
+    image = torch.clamp(image.permute(1, 2, 0) * rgb_std + rgb_mean, 0, 1)
+    return torchvision.transforms.ToPILImage(image)
+
+#get a dataset
+
+style_layers, content_layers = [0, 5, 10, 19, 28], [25] #定义哪些层用来匹配样式
+
+def extract_features(x, content_layers, style_layers):
+    content = []
+    style = []
+    for i in range(len(net)):
+        x = net[i](x)
+        if i in style_layers:
+            style.append(x)
+        if i in content_layers:
+            content.append(x)
+    return content, layer
+
+
+def get_content(image_size, device):
+    content_x = preprocess(content, image_size)
+    content_y = extract_features(content_x, content_layers, style_layers)
+    return content_x, content_y
+
+def get_style(image_size, device):
+    style_x = preprocess(content, image_size)
+    style_y = extract_features(content_x, content_layers, style_layers)
+    return style_x, style_y
+
+def content_loss(y_hat, y):
+    return torch.square(y_hat - y.detach()).mean()
+
+def gram(x):    #匹配二阶统计分布（分布相近即可认为风格一致），一阶为均值，二阶为协方差
+    num_channels, n = x.shape[1], x.numel()     #可以参考吴恩达
+    x = x.reshape((num_channels, n))
+    return torch.matmul(x, x.T) / (num_channels * n)    #对协方差做归一化
+
+def style_loss(y_hat, gram_y):
+    return torch.square(gram(y_hat) - gram_y.detach()).mean()
+
+def tv_loss(y_hat):
+    return 0.5 * (torch.abs(y_hat[:, :, 1:, :] - y_hat[:, :, :-1, :]).mean() +
+                  torch.abs(y_hat[:, :, :, 1:] - y_hat[:, :, :, :-1]).mean())   #tv降噪算法，计算总变化损失
+
+#风格转移的损失是三种损失的加权和
+content_weight, style_weight, tv_weight = 1, 1e3, 10
+
+def compute_loss(x, contents_y_hat, styles_y_hat, contents_y, styles_y_gram):
+    contents_loss = [content_loss(y_hat, y) * content_weight for y_hat, y in zip(contents_y_hat, contents_y)]
+    styles_loss = [style_loss(y_hat, y) * style_weight for y_hat, y in zip(styles_y_hat, styles_y_gram)]
+    total_variance_loss = tv_loss(x) * tv_weight
+    l = sum(10 * styles_loss + contents_loss + total_variance_loss)     #*10为历史遗留问题，可以直接将权重改为1e4
+    return contents_loss, styles_loss, total_variance_loss
+
+class SynthesizedImage(nn.Module):
+    def __init__(self, image_shape, **kwargs):
+        super(SynthesizedImage, self).__init__(**kwargs)
+        self.weight = nn.Parameter(torch.rand(*image_shape))
+
+    def forward(self):
+        return self.weight
+
+def get_init(x, device, lr, styles_y):
+    gen_image = SynthesizedImage(x.shape).to(device)    #得到生成的图片，作为参数进行更新
+    gen_image.weight.data.copy_(x.data)
+    trainer = torch.optim.Adam(gen_image.parameters())
+    styles_y_gram = [gram(y) for y in styles_y]
+    return gen_image(), styles_y_gram, trainer
+
+#进行训练，得到最终生成的图片
