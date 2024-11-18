@@ -32,7 +32,7 @@ def postprocess(image):
 
 style_layers, content_layers = [0, 5, 10, 19, 28], [25] #定义哪些层用来匹配样式
 
-def extract_features(x, content_layers, style_layers):
+def extract_features(x, content_layers, style_layers):    #net为一个预训练好的模型，其参数不进行更新，仅用作特征抽取
     content = []
     style = []
     for i in range(len(net)):
@@ -67,7 +67,7 @@ def style_loss(y_hat, gram_y):
 
 def tv_loss(y_hat):
     return 0.5 * (torch.abs(y_hat[:, :, 1:, :] - y_hat[:, :, :-1, :]).mean() +
-                  torch.abs(y_hat[:, :, :, 1:] - y_hat[:, :, :, :-1]).mean())   #tv降噪算法，计算总变化损失
+                  torch.abs(y_hat[:, :, :, 1:] - y_hat[:, :, :, :-1]).mean())   #tv图像平滑技术（也是降噪算法），计算总变化损失
 
 #风格转移的损失是三种损失的加权和
 content_weight, style_weight, tv_weight = 1, 1e3, 10
