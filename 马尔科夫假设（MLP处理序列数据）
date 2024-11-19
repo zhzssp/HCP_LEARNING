@@ -41,3 +41,6 @@ def train(train_iter, net, epochs, loss, lr):
 
 net = get_net()
 train(train_iter, net, epochs, loss, lr)
+
+one_step_preds(features)
+d2l.plot([time, time[tau:], [x.detach().numpy(), one_step_preds.detach().numpy()], 'time', 'x', legend=['data', '1-step preds'], xlim=[1, 1000], figsize=(6, 3))
