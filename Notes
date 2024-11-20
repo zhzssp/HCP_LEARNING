@@ -64,3 +64,4 @@ transformer
 8.residual connection，直接将输入加到输出上
 9.layer normalization（为什么不用batch normalization?）
 10.masked self attention，不允许看后面的信息
+11.decoder设置开始和结束符号（NA、NAT）
