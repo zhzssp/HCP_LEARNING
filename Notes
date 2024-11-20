@@ -44,6 +44,7 @@ batch normalization
 RNN
 1.梯度爆炸：gradient clip
 2.梯度消失：Gated RNN、LSTM
+3.BiRNN
 
 目标检测：
 1.边缘框。锚框
@@ -53,4 +54,8 @@ RNN
 5.YOLO：同样只需单神经网络，将图片均匀分成锚框，每个锚框预测复数个边缘框（圈中几个时都会进行预测）
 
 transformer
-1.解决问题：
+1.解决问题：window无法开得过大，内存占用过大，overfitting
+2.注意力机制：对每个输入向量生成query, key, value，通过query和key的内积得到相关度α，再以α为权重求和value得到输出向量
+3.多头注意力机制：对每个query, key, value，再根据需要使用新的矩阵扩展出多个向量，以匹配不同方面的相关性，同一方面的query, key和value进行上述计算
+4.注意力机制无法捕捉到位置信息（对不同位置的操作都是一样的），因此可以对每一个输入向量加上一个位置向量（使用位置编码的理论生成）
+5.self attention可以认为包含了CNN
