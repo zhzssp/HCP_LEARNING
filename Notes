@@ -58,4 +58,9 @@ transformer
 2.注意力机制：对每个输入向量生成query, key, value，通过query和key的内积得到相关度α，再以α为权重求和value得到输出向量
 3.多头注意力机制：对每个query, key, value，再根据需要使用新的矩阵扩展出多个向量，以匹配不同方面的相关性，同一方面的query, key和value进行上述计算
 4.注意力机制无法捕捉到位置信息（对不同位置的操作都是一样的），因此可以对每一个输入向量加上一个位置向量（使用位置编码的理论生成）
-5.self attention可以认为包含了CNN
+5.self attention可以认为包含了CNN，小批量数据适合使用CNN，大批量使用self attention会更好
+6.与RNN对比：RNN对较远的信息感知较弱，并且其并非parallel，效率较低
+7.self attention on gragh，只需要计算相连的节点就可以，这也是一种GNN
+8.residual connection，直接将输入加到输出上
+9.layer normalization（为什么不用batch normalization?）
+10.masked self attention，不允许看后面的信息
