@@ -69,4 +69,5 @@ transformer
 13.每次产生输出都是一个分类问题（one-hot vector，注意输出还有end标志），最小化所有cross entropy的总和
 14.Teacher Forcing，将正确答案作为decoder输入。可是在测试的时候无法获得正确答案
 15.training tips：copy mechanism（将输入的部分直接复制到输出中，比如chat-bot或者摘要）、guided attention（monotonic attention, location-aware attention）
-16.beam search束搜索，但是其在答案明确时较有用，需要创造性或者随机性时作用有限（一直选择最好的不一定是最好的）
+16.beam search束搜索，但是其在答案明确时较有用，需要创造性或者随机性时作用有限（不完美有时候更好）
+17.BlEU Score（两个完整的句子作比较），与minimised cross entropy不一致
