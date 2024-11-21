@@ -64,4 +64,7 @@ transformer
 8.residual connection，直接将输入加到输出上
 9.layer normalization（为什么不用batch normalization?）
 10.masked self attention，不允许看后面的信息
-11.decoder设置开始和结束符号（NA、NAT）
+11.decoder设置开始和结束符号（NA、NAT，后者往往表现比前者差due to multi-modality）
+12.cross attention：从decoder输出获得query，并与encoder的输出向量计算相关性
+13.每次产生输出都是一个分类问题（one-hot vector，注意输出还有end标志），最小化所有cross entropy的总和
+14.Teacher Forcing，将正确答案作为decoder输入。可是在测试的时候无法获得正确答案
