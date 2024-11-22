@@ -75,3 +75,5 @@ transformer
 
 GAN
 1.固定generator和discriminator的其一，对另一个进行训练
+2.判别器同时接收真实样本和生成器的假样本
+3.两者组成一个网络，固定后面的隐藏层，对前面的隐藏层做gradient ascent（梯度乘负号）
