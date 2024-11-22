@@ -74,6 +74,6 @@ transformer
 18.exposure bias（一步预测错，步步错）：可选的解决方案schedule sampling（在训练时给decoder适当的错误输入，但是会伤害到并行性，在transformers中需要特别处理）
 
 GAN
-1.固定generator和discriminator的其一，对另一个进行训练
+1.固定generator和discriminator的其一，对另一个使用gradient ascent（梯度乘负号）进行训练
 2.判别器同时接收真实样本和生成器的假样本
-3.两者组成一个网络，固定后面的隐藏层，对前面的隐藏层做gradient ascent（梯度乘负号）
+3.两者组成一个网络，固定后面的隐藏层，对前面的隐藏层进行训练
