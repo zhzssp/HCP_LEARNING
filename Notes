@@ -80,10 +80,10 @@ GAN
 4.generator是通过前馈网络（输入向量，输出图片），component-by-component地生成最终的图像，因此难以捕捉到全局的依赖关系（bottom up）
 5.generator可以通过学习一个encoder，将原始输入图片转化为一个可以描述其特征的向量（如何training这样一个encoder？encoder不能单独train，需要Auto-Encoder）
 6.将向量加权后再输入generator，可能会得到noise的结果，因此需要用到Variational Auto-Encoder
-7.discriminator
+7.discriminator难以生成图片
 
 VAE
 1.encoder同时生成向量和每一个维度的方差（添加正态分布中sample的值与方差相乘得到的noise，来增强网络的稳定性）
-2.code由自己作为参数调整，一般是一个低维的向量
-3.encoder的输出code越大，不代表performance越好，因为可能会导致loss低但是performance并没有显著提升，仅是在做copy的情况
+2.code由自己作为参数调整，一般是一个低维的向量：图像在高维的空间上是一个低维的分布
+3.增大code对train不起来有效，但是encoder的输出code越大，不代表performance越好，因为可能会导致loss低但是performance并没有显著提升，仅是在做copy的情况
 4.training的时候，让方差越接近1越好
