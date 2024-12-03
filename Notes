@@ -81,6 +81,8 @@ GAN
 5.将向量加权后再输入generator，可能会得到noise的结果，由此引出Variational Auto-Encoder
 
 VAE
-1.encoder同时生成向量和每一个维度的方差（添加正态分布中sample的值与方差相乘得到的noise，来增强网络的稳定性，训练时使得方差越接近1越好）
+1.encoder同时生成向量和每一个维度的方差（添加正态分布中sample的值与方差相乘得到的noise，来增强网络的稳定性）
 2.code由自己作为参数调整，一般是一个低维的向量
-3.encoder的input越大，不代表performance越好，因为可能会导致loss低但是performance并没有显著提升
+3.encoder的输出code越大，不代表performance越好，因为可能会导致loss低但是performance并没有显著提升，仅是在做copy的情况
+4.training的时候，让方差越接近1越好
+5.难以捕捉component之间的关系，需要比较深的网络来捕捉component之间的correlation
