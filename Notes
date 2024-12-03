@@ -77,3 +77,10 @@ GAN
 1.固定generator和discriminator的其一，对另一个使用gradient ascent（梯度乘负号）进行训练
 2.判别器同时接收真实样本和生成器的假样本
 3.两者组成一个网络，固定后面的隐藏层，对前面的隐藏层进行训练
+4.可以将自编码器的decoder作为generator
+5.将向量加权后再输入generator，可能会得到noise的结果，由此引出Variational Auto-Encoder
+
+VAE
+1.encoder同时生成向量和每一个维度的方差（添加正态分布中sample的值与方差相乘得到的noise，来增强网络的稳定性，训练时使得方差越接近1越好）
+2.code由自己作为参数调整，一般是一个低维的向量
+3.encoder的input越大，不代表performance越好，因为可能会导致loss低但是performance并没有显著提升
