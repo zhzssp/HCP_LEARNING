@@ -81,6 +81,7 @@ GAN
 5.generator可以通过学习一个encoder，将原始输入图片转化为一个可以描述其特征的向量（如何training这样一个encoder？encoder不能单独train，需要Auto-Encoder）
 6.将向量加权后再输入generator，可能会得到noise的结果，因此需要用到Variational Auto-Encoder
 7.discriminator难以生成图片
+8.Stack GAN, Conditional GAN, BiGAN
 
 VAE
 1.encoder同时生成向量和每一个维度的方差（添加正态分布中sample的值与方差相乘得到的noise，来增强网络的稳定性）
